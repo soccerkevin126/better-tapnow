@@ -1,0 +1,97 @@
+# Default end-to-end workflow: text brief -> storyboard plan -> rendered
+# scene images (quality-gated) -> animated clips -> one assembled video.
+#
+# Shape: many inputs (1 brief + optional reference images) -> 1 output video.
+
+name: storyboard
+description: Turn a text brief into a short assembled video via plan/render/critique/animate.
+
+inputs:
+  mode: flat
+  expects:
+    text: { min: 1, max: 1 }     # the brief
+    image: { min: 0, max: 8 }    # optional style references
+
+steps:
+  - id: plan
+    kind: text
+    provider: anthropic
+    model: claude-fable-5
+    inputs: ["inputs.image"]     # reference images are shown to the planner
+    output: json
+    prompt: |
+      You are planning a short video. Brief:
+
+      {{ inputs.text[0].content }}
+
+      If reference images are attached, treat them as the visual ground truth
+      for subject, palette, and mood — write image_prompts consistent with
+      them.
+
+      Produce a storyboard as JSON matching the required schema: 2-6 scenes.
+      Each scene needs a vivid, self-contained image_prompt for a text-to-image
+      model, a motion_prompt describing camera and subject movement for an
+      image-to-video model, and a whole-number duration in seconds (3-10).
+      Reply with ONLY the JSON object.
+    json_schema:
+      type: object
+      required: [title, scenes]
+      properties:
+        title: { type: string }
+        scenes:
+          type: array
+          minItems: 2
+          maxItems: 6
+          items:
+            type: object
+            required: [description, image_prompt, motion_prompt, duration_s]
+            properties:
+              description: { type: string }
+              image_prompt: { type: string }
+              motion_prompt: { type: string }
+              duration_s: { type: number, minimum: 3, maximum: 10 }
+
+  - id: render
+    kind: image
+    provider: fal-seedream           # Seedream V4 via fal.ai ($0.03/image);
+    model: fal-ai/bytedance/seedream/v4/text-to-image
+    # swap back to ark-seedream + seedream-5-0-lite-260128 if you have
+    # BytePlus/Volcano Ark access
+    inputs: ["inputs.image"]     # refs make renders style-consistent (edit mode)
+    for_each: plan.scenes
+    expected_items: 4            # dry-run fan-out estimate before plan exists
+    prompt: "{{ item.image_prompt }}"
+    output: file
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.6
+      max_retries: 2
+      prompt: |
+        You are reviewing a generated image (attached) against the request
+        that produced it.
+
+        Request: {{ item.image_prompt }}
+
+        Score how well the image matches the request from 0 to 1, with
+        concrete feedback on what to change if it falls short.
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}
+
+  - id: animate
+    kind: video
+    provider: kling
+    model: kling-3.0
+    for_each: plan.scenes
+    expected_items: 4
+    prompt: "{{ item.motion_prompt }}"
+    inputs: ["render[{index}]"]  # {index} pairs each scene with its image
+    params:
+      duration_s: "{{ item.duration_s }}"
+    output: file
+
+  - id: assemble
+    kind: assemble
+    provider: ffmpeg
+    model: ffmpeg
+    inputs: ["animate"]          # all clips, in scene order
+    output: file

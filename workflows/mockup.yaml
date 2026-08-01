@@ -1,0 +1,146 @@
+# Sun Fade Tee product mockups (dark grey colorway).
+# Prompts follow the OFFICIAL Seedream 4.x prompt guide
+# (docs.byteplus.com/en/docs/ModelArk/1829186): concise natural language,
+# explicit application scenario, per-image reference roles ("Image 1..."),
+# text-to-render in double quotes, fixed elements stated explicitly.
+# Attachment order per step (role dirs sort alphabetically):
+#   front: Image 1 = front/ref_art_front_said.png   (exact vector script)
+#          Image 2 = front/ref_final_front.jpg      (target product)
+#          Image 3 = style/ref_sunfade_photo.jpg    (fade ground truth)
+#   back:  Image 1 = back/ref_art_back_inpassing.png
+#          Image 2 = back/ref_final_back.jpg
+#          Image 3 = style/ref_sunfade_photo.jpg
+# Spec (from source-files/Sun Fade Embrorder Teckpack 2.ai): 240-255 GSM
+# washed cotton jersey, boxy oversized (M: 24.75" L, 21" chest, 18.5"
+# shoulders), tight 0.75" ribbed collar, sun fade through the embroidery
+# zone, embroidery AFTER wash, Isacord 0761 tan thread.
+
+name: mockup
+description: Photoreal Sun Fade Tee mockups on concrete — official Seedream prompt structure.
+
+inputs:
+  mode: roles
+  roles:
+    front: { type: image, min: 1 }
+    back:  { type: image, min: 1 }
+    style: { type: image, min: 1 }
+    notes: { type: text, min: 0, max: 1 }
+
+steps:
+  - id: render_front
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image
+    inputs: ["inputs.front", "inputs.style"]
+    params: { image_size: portrait_4_3 }
+    output: file
+    prompt: |
+      Create a professional e-commerce product photograph: the t-shirt
+      from Image 2 laid flat on a raw grey concrete floor, shot straight
+      down, front side up, in soft natural daylight with gentle realistic
+      fabric folds.
+
+      Image 1 is the exact embroidery artwork. Reproduce its cursive
+      script reading "Said," identically — the same letterforms, slant,
+      spacing and thin delicate stroke weight — rendered as fine tan
+      satin-stitch embroidery, centered high on the chest, about one
+      third of the chest width. Do not copy Image 1's dark background
+      rectangle onto the shirt.
+
+      Image 2 is the garment ground truth: an oversized boxy washed-black
+      heavyweight cotton tee with a tight ribbed crewneck collar, dropped
+      shoulders and short wide sleeves. Keep its proportions, fabric
+      texture and colors exactly.
+
+      Image 3 shows the sun fade: bleached smoky grey from the collar and
+      shoulders down through the embroidery area (about the top third of
+      the shirt), uneven like real UV exposure, melting softly into the
+      dark base — not an ombre band, and with no orange or sepia tint.
+
+      The word "Said," appears exactly once. No other text, tags, neck
+      labels, red marks, or watermarks anywhere.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.front", "inputs.style"]
+      prompt: |
+        Quality-check a generated garment mockup. Image 1 is the exact
+        script artwork, Image 2 the target product, Image 3 the sun-fade
+        reference; the LAST image is the generated mockup. Score it 0-1:
+        - the embroidered script matches Image 1's letterforms, slant and
+          thin stroke weight, reads exactly "Said," (with comma), appears
+          exactly once, tan thread, centered high on the chest
+        - sun fade: smoky grey from collar/shoulders down through the
+          embroidery area (top third), embroidery inside the faded zone,
+          lower shirt uniformly dark. Below 0.6 if it reads as a
+          two-tone/ombre split, stops above the embroidery, or is
+          orange/rust tinted
+        - garment matches Image 2: boxy oversized washed-black tee, tight
+          ribbed collar, on concrete, top-down, front side up
+        - photorealistic; no stray text, tags, labels, panels, red marks
+          or watermarks
+        Give concrete feedback on what to change if below threshold.
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}
+
+  - id: render_back
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image
+    inputs: ["inputs.back", "inputs.style"]
+    params: { image_size: portrait_4_3 }
+    output: file
+    prompt: |
+      Create a professional e-commerce product photograph: the t-shirt
+      from Image 2 laid flat on a raw grey concrete floor, shot straight
+      down, BACK side up, in soft natural daylight with gentle realistic
+      fabric folds.
+
+      Image 1 is the exact embroidery artwork. Reproduce its signature
+      script reading "In Passing" identically — "In" smaller at the upper
+      right, "Passing" sweeping larger beneath, same letterforms and thin
+      delicate stroke weight — rendered as fine tan satin-stitch
+      embroidery, centered high on the upper back just below the collar
+      seam, spanning about half the shoulder width. Do not copy Image 1's
+      dark background rectangle onto the shirt.
+
+      Image 2 is the garment ground truth: the back of an oversized boxy
+      washed-black heavyweight cotton tee with a tight ribbed crewneck
+      collar (very shallow back neck drop), dropped shoulders and short
+      wide sleeves. Keep its proportions, fabric texture and colors
+      exactly.
+
+      Image 3 shows the sun fade: bleached smoky grey from the collar and
+      shoulders down through the embroidery area (about the top third of
+      the shirt), uneven like real UV exposure, melting softly into the
+      dark base — not an ombre band, and with no orange or sepia tint.
+
+      The words "In Passing" appear exactly once. No other text, tags,
+      neck labels, red marks, or watermarks anywhere.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.back", "inputs.style"]
+      prompt: |
+        Quality-check a generated garment mockup. Image 1 is the exact
+        script artwork, Image 2 the target product, Image 3 the sun-fade
+        reference; the LAST image is the generated mockup. Score it 0-1:
+        - the embroidered script matches Image 1's letterforms and thin
+          stroke weight, reads exactly "In Passing" ("In" upper right,
+          "Passing" sweeping beneath), appears exactly once — below 0.5
+          if any word is duplicated elsewhere on the shirt — tan thread,
+          high on the upper back below the collar
+        - sun fade: smoky grey from collar/shoulders down through the
+          embroidery area (top third), embroidery inside the faded zone,
+          lower shirt uniformly dark. Below 0.6 if it reads as a
+          two-tone/ombre split, stops above the embroidery, or is
+          orange/rust tinted
+        - garment matches Image 2: boxy oversized washed-black tee, tight
+          ribbed collar, on concrete, top-down, BACK side up
+        - photorealistic; no stray text, tags, labels, panels, red marks
+          or watermarks
+        Give concrete feedback on what to change if below threshold.
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}

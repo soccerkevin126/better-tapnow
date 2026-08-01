@@ -1,0 +1,74 @@
+# Images-only workflow: text brief -> shot list -> quality-gated stills.
+# No video generation, no Kling — plan, render, critique, done.
+#
+# Shape: many inputs (1 brief + optional reference images) -> many images.
+
+name: stills
+description: Turn a brief into a set of quality-gated still images (no video steps).
+
+inputs:
+  mode: flat
+  expects:
+    text: { min: 1, max: 1 }     # the brief
+    image: { min: 0, max: 8 }    # optional style references
+
+steps:
+  - id: plan
+    kind: text
+    provider: anthropic
+    model: claude-fable-5
+    inputs: ["inputs.image"]
+    output: json
+    prompt: |
+      You are art-directing a set of still images. Brief:
+
+      {{ inputs.text[0].content }}
+
+      If reference images are attached, treat them as the visual ground truth
+      for subject, palette, and mood — write image_prompts consistent with
+      them.
+
+      Produce a shot list as JSON matching the required schema: 3-8 distinct
+      shots that together cover the brief. Each shot needs a short
+      description and a vivid, self-contained image_prompt for a
+      text-to-image model (subject, composition, lighting, style).
+      Reply with ONLY the JSON object.
+    json_schema:
+      type: object
+      required: [title, shots]
+      properties:
+        title: { type: string }
+        shots:
+          type: array
+          minItems: 3
+          maxItems: 8
+          items:
+            type: object
+            required: [description, image_prompt]
+            properties:
+              description: { type: string }
+              image_prompt: { type: string }
+
+  - id: render
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image
+    inputs: ["inputs.image"]
+    for_each: plan.shots
+    expected_items: 6
+    prompt: "{{ item.image_prompt }}"
+    output: file
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.6
+      max_retries: 2
+      prompt: |
+        You are reviewing a generated image (attached) against the request
+        that produced it.
+
+        Request: {{ item.image_prompt }}
+
+        Score how well the image matches the request from 0 to 1, with
+        concrete feedback on what to change if it falls short.
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}

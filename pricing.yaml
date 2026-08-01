@@ -1,0 +1,81 @@
+# Cost table used for --dry-run estimates and spend-cap checks.
+#
+# verified: false  => the number is a PLACEHOLDER. Dry runs show it with a
+# warning; a real run REFUSES to start until it is confirmed against current
+# official provider docs and flipped to verified: true. This happens when each
+# real adapter is added — never guessed.
+
+models:
+  mock:
+    unit: per_call
+    per_call: 0.0
+    verified: true
+    notes: offline mock, free
+
+  ffmpeg:
+    unit: per_call
+    per_call: 0.0
+    verified: true
+    notes: local assembly, free
+
+  claude-fable-5:
+    unit: per_mtok_in_out
+    input_per_mtok: 10.0
+    output_per_mtok: 50.0
+    verified: true
+    notes: verified 2026-08-01 against platform.claude.com models overview
+
+  claude-opus-4-8:
+    unit: per_mtok_in_out
+    input_per_mtok: 5.0
+    output_per_mtok: 25.0
+    verified: true
+    notes: server-side refusal-fallback model for claude-fable-5; verified 2026-08-01
+
+  # Seedream via fal.ai — verified 2026-08-01 against the fal.ai model page
+  # ("Your request will cost $0.03 per image"). Used by the default workflow
+  # because BytePlus ModelArk is region-restricted for this account.
+  fal-ai/bytedance/seedream/v4/text-to-image:
+    unit: per_image
+    per_image: 0.03
+    verified: true
+    notes: verified 2026-08-01 on fal.ai model page
+  fal-ai/bytedance/seedream/v4/edit:
+    unit: per_image
+    per_image: 0.03
+    verified: true
+    notes: verified 2026-08-01 on fal.ai model page (used when reference images are attached)
+
+  # Seedream (BytePlus ModelArk / Volcano Engine Ark) — verified 2026-08-01
+  # against docs.byteplus.com/en/docs/ModelArk/1544106 (output image price;
+  # input reference images are free on lite/4-5/4-0).
+  seedream-5-0-lite-260128:
+    unit: per_image
+    per_image: 0.035
+    verified: true
+    notes: verified 2026-08-01 against official ModelArk pricing
+  seedream-4-5-251128:
+    unit: per_image
+    per_image: 0.04
+    verified: true
+    notes: verified 2026-08-01 against official ModelArk pricing
+  seedream-4-0-250828:
+    unit: per_image
+    per_image: 0.03
+    verified: true
+    notes: verified 2026-08-01 against official ModelArk pricing
+  dola-seedream-5-0-pro-260628:
+    unit: per_image
+    per_image: 0.045
+    verified: true
+    notes: verified 2026-08-01; $0.045 at ≤2.61MP (1.5K or lower), $0.09 above; input images $0.003 from 2nd
+
+  # Kling — verified 2026-08-01 against kling.ai/dev/pricing (list price,
+  # 1 unit = $0.14). kling-3.0 at 720p with audio off = 0.6 units/s.
+  # 1080p = $0.112/s, 4k = $0.42/s. Actual spend is read back from the
+  # task's billing info when available.
+  kling-3.0:
+    unit: per_second
+    per_second: 0.084
+    verified: true
+    notes: verified 2026-08-01; 720p audio-off list price

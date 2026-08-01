@@ -1,0 +1,105 @@
+# v6 = ITERATION on v5. Changes: (1) fade extends past the shoulder
+# seams onto the upper sleeves; (2) the faded zone is lighter/paler.
+
+name: mockup-v6
+description: Iterate on v5 — fade spreads onto the sleeves and gets lighter; keep everything else.
+
+inputs:
+  mode: roles
+  roles:
+    front:      { type: image, min: 1 }   # exact art + product ref (for the gate)
+    back:       { type: image, min: 1 }
+    front_base: { type: image, min: 1, max: 1 }   # v4 front — the edit target
+    back_base:  { type: image, min: 1, max: 1 }   # v4 back
+    notes:      { type: text, min: 0, max: 1 }
+
+steps:
+  - id: render_front
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image
+    inputs: ["inputs.front_base"]
+    params: { image_size: portrait_4_3 }
+    output: file
+    prompt: |
+      Edit Image 1, a product photograph of a washed-black t-shirt lying
+      on a concrete floor. Change the sun-faded area of the
+      shirt in two ways: (1) spread the bleached zone outward across the
+      shoulder seams and onto the upper halves of both sleeves, so the
+      shoulders and sleeve tops read clearly sun-bleached; (2) make the
+      whole faded zone lighter — a paler, more strongly bleached smoky
+      grey — still dispersed and irregular, dissolving gradually into
+      the dark lower body with no hard edge. Keep everything else exactly unchanged: the embroidered
+      "Said," script (same letterforms, size and position), the ribbed
+      collar, the garment shape, fabric texture, folds, lighting,
+      shadows, camera angle and the concrete floor. No orange or sepia
+      tint. No new text, marks or tags.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.front", "inputs.front_base"]
+      prompt: |
+        Quality-check an edited garment mockup. Image 1 is the exact
+        script artwork, Image 2 the target product reference, Image 3 the
+        PREVIOUS version that was edited; the LAST image is the edited
+        result. Score it 0-1:
+        - compared to Image 3, the faded zone now extends across the
+          shoulder seams onto the upper sleeves AND is visibly lighter
+          and paler overall, still dissolving organically into a dark
+          lower body — below 0.6 if the shoulders/upper sleeves remain
+          dark, the fade did not lighten, a hard band forms, or it
+          turned orange/sepia
+        - everything else is preserved from Image 3: the embroidered
+          "Said," script still matches Image 1's letterforms and thin
+          stroke weight, appears exactly once, same size and position;
+          same collar, garment shape, lighting and concrete floor
+        - no new text, tags, labels, red marks or watermarks appeared
+        Give concrete feedback on what to change if below threshold.
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}
+
+  - id: render_back
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image
+    inputs: ["inputs.back_base"]
+    params: { image_size: portrait_4_3 }
+    output: file
+    prompt: |
+      Edit Image 1, a product photograph of the back of a washed-black
+      t-shirt lying on a concrete floor. Extend the sun-faded area
+      further down the shirt: the bleached smoky-grey zone should reach
+      down to armpit level, drifting unevenly onto the upper sleeves and
+      across the mid back — more dispersed and irregular, like organic
+      UV bleaching that dissolves gradually into the dark lower body
+      with no hard edge. Keep everything else exactly unchanged: the
+      embroidered "In Passing" script (same letterforms, size and
+      position), the ribbed collar, the garment shape, fabric texture,
+      folds, lighting, shadows, camera angle and the concrete floor. No
+      orange or sepia tint. No new text, marks or tags.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.back", "inputs.back_base"]
+      prompt: |
+        Quality-check an edited garment mockup. Image 1 is the exact
+        script artwork, Image 2 the target product reference, Image 3 the
+        PREVIOUS version that was edited; the LAST image is the edited
+        result. Score it 0-1:
+        - compared to Image 3, the faded zone now extends across the
+          shoulder seams onto the upper sleeves AND is visibly lighter
+          and paler overall, still dissolving organically into a dark
+          lower body — below 0.6 if the shoulders/upper sleeves remain
+          dark, the fade did not lighten, a hard band forms, or it
+          turned orange/sepia
+        - everything else is preserved from Image 3: the embroidered
+          "In Passing" script still matches Image 1's letterforms
+          ("In" upper right, "Passing" sweeping beneath), appears exactly
+          once, same size and position; same collar, garment shape,
+          lighting and concrete floor
+        - no new text, tags, labels, red marks or watermarks appeared
+        Give concrete feedback on what to change if below threshold.
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}

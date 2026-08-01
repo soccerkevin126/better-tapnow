@@ -1,0 +1,15 @@
+.env
+.venv
+.venv 2/
+venv.nosync/
+__pycache__/
+*.pyc
+runs/
+.pytest_cache/
+dist/
+.DS_Store
+
+# Private working assets — not part of the public tool
+/input/
+/outputs/
+/source-files/

@@ -1,0 +1,32 @@
+[project]
+name = "tapnow"
+version = "0.1.0"
+description = "Configurable AI media-generation pipelines"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+    "jsonschema>=4.22",
+    "anthropic>=0.120.2",
+    "pillow>=12.3.0",
+]
+
+[project.scripts]
+tapnow = "tapnow.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tapnow"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
