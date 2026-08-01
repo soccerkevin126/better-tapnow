@@ -26,12 +26,28 @@ steps:
 
       If reference images are attached, treat them as the visual ground truth
       for subject, palette, and mood — write image_prompts consistent with
-      them.
+      them, and reuse the exact same noun for any subject that recurs across
+      scenes (never alternate synonyms for the same thing).
 
       Produce a storyboard as JSON matching the required schema: 2-6 scenes.
-      Each scene needs a vivid, self-contained image_prompt for a text-to-image
-      model, a motion_prompt describing camera and subject movement for an
-      image-to-video model, and a whole-number duration in seconds (3-10).
+
+      Each image_prompt goes to Seedream (text-to-image). Write it as concise
+      natural-language sentences — subject + action + environment — under 120
+      words; open by stating the application scenario (e.g. "Cinematic film
+      still: ..."); include style, lighting and composition descriptors; put
+      any text that must appear in the image in double quotes; name colors as
+      hex plus a color name when palette matters. State the desired scene
+      positively rather than listing what to avoid.
+
+      Each motion_prompt goes to Kling (image-to-video), which already has the
+      rendered scene as its input frame. Describe ONLY the motion in 15-40
+      words: name the main subject just enough to bind it, give it one
+      physically plausible movement, and use at most ONE slow camera move with
+      an explicit endpoint ("...then the camera settles") — or state "the
+      camera remains fixed" and let the subject move. End with: "No morphing,
+      no warping, no scene change."
+
+      Each scene needs a whole-number duration in seconds (3-10; prefer 5-7).
       Reply with ONLY the JSON object.
     json_schema:
       type: object
@@ -61,6 +77,7 @@ steps:
     for_each: plan.scenes
     expected_items: 4            # dry-run fan-out estimate before plan exists
     prompt: "{{ item.image_prompt }}"
+    params: { image_size: auto_2K }   # small detail collapses at 1K
     output: file
     quality_gate:
       provider: anthropic
@@ -73,8 +90,16 @@ steps:
 
         Request: {{ item.image_prompt }}
 
-        Score how well the image matches the request from 0 to 1, with
-        concrete feedback on what to change if it falls short.
+        First describe what the image actually shows — subjects, setting,
+        lighting, composition — citing only what you can see. If the request
+        includes text in double quotes, transcribe any rendered text exactly
+        as it appears, including errors; misspelled, duplicated or garbled
+        text scores below 0.5.
+
+        Then score how well the image matches the request from 0 to 1. If
+        below threshold, write feedback as ONE directional instruction naming
+        the specific defect to fix and what to keep (it is fed back to the
+        image model verbatim).
         Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}
 
   - id: animate

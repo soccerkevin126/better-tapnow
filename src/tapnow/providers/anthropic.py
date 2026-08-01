@@ -140,24 +140,36 @@ class AnthropicProvider(Provider):
         ) / 1_000_000, 6)
 
 
-MAX_IMAGE_EDGE = 1568  # Claude vision's max useful resolution
+# High-resolution vision tier (Claude 4.7+, incl. claude-fable-5): images are
+# 28x28-px patches, capped at 4784 visual tokens and a 2576px long edge —
+# anything larger is resized server-side, so sending it only costs upload.
+MAX_IMAGE_EDGE = 2576
+MAX_IMAGE_TOKENS = 4784
+_PATCH = 28
 
 
 def _shrink_image(data: bytes, media: str) -> tuple[bytes, str]:
-    """Downscale oversized attachments — anything past 1568px is resized
-    server-side anyway, so sending it just costs upload time and tokens."""
+    """Downscale attachments just enough to fit both high-res-tier limits."""
     try:
         import io
 
         from PIL import Image
 
         img = Image.open(io.BytesIO(data))
-        if max(img.size) <= MAX_IMAGE_EDGE:
+        w, h = img.size
+        scale = min(
+            1.0,
+            MAX_IMAGE_EDGE / max(w, h),
+            (MAX_IMAGE_TOKENS * _PATCH * _PATCH / (w * h)) ** 0.5,
+        )
+        if scale >= 1.0:
             return data, media
         img = img.convert("RGB")
-        img.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE))
+        img.thumbnail((int(w * scale), int(h * scale)))
         buf = io.BytesIO()
-        img.save(buf, "JPEG", quality=90)
+        # Quality 95: the gate reads letterforms — compression artifacts on
+        # thin strokes read as rendering defects.
+        img.save(buf, "JPEG", quality=95)
         return buf.getvalue(), "image/jpeg"
     except Exception:
         return data, media  # unparseable → send as-is

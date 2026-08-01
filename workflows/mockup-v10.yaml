@@ -1,0 +1,191 @@
+# v10 = the v9 edit re-run on GPT IMAGE 2 (openai/gpt-image-2/edit via fal),
+# switched per user decision 2026-08-01. #1 LMArena image-edit model; forced
+# high-fidelity input processing. Both sides edit from the v5 bases (v9's
+# Seedream front redrew the script; v9 back passed and stays the fallback).
+#
+# v9 lessons applied:
+#   - the exact artwork is now ATTACHED TO THE RENDER as a named image
+#     (Image 3), not just to the gate — the editor gets letterform ground
+#     truth in-context
+#   - fade strength calibrated: "clearly visible but subtle" + "matching the
+#     strength of Image 2" (v9 front overcorrected to nearly no fade)
+#   - thread color locked in words (v9 front drifted to copper)
+
+name: mockup-v10
+description: Re-run the fade correction on GPT Image 2 — subtle body-panel fade per tech pack, letterforms locked.
+
+inputs:
+  mode: roles
+  roles:
+    front:      { type: image, min: 1 }             # [0] exact art, [1] placement page
+    back:       { type: image, min: 1 }
+    front_base: { type: image, min: 1, max: 1 }     # v5 front — the edit target
+    back_base:  { type: image, min: 1, max: 1 }     # v5 back
+    style:      { type: image, min: 1, max: 1 }     # tech pack sun-fade reference photo
+    notes:      { type: text, min: 0, max: 1 }
+
+steps:
+  - id: render_front
+    kind: image
+    provider: fal-gpt-image
+    model: openai/gpt-image-2/edit
+    # Image 1 = edit target (v5), Image 2 = fade reference, Image 3 = exact art
+    inputs: ["inputs.front_base", "inputs.style", "inputs.front[0]"]
+    # 1536x2048 = the bases' exact size/aspect (multiples of 16 as required);
+    # pinning it keeps composition fixed and cost predictable (~3.1MP output).
+    params: { quality: high, image_size: { width: 1536, height: 2048 } }
+    output: file
+    prompt: |
+      Edit Image 1, a professional e-commerce product photograph of a
+      washed-black t-shirt lying flat on a concrete floor. Image 2 is the
+      tech pack's sun-fade reference photo. Image 3 is the exact vector
+      artwork of the chest embroidery.
+
+      Keep the embroidered "Said," script exactly as it is in Image 1 —
+      the same letterforms as Image 3, the same thin stroke weight, the
+      same pale greige-gold thread color, the same size and position. Keep
+      the garment shape, fabric folds, camera angle, overall lighting and
+      the concrete floor unchanged.
+
+      Change only the sun fade, matching the strength and character of the
+      fade in Image 2: a clearly visible but subtle smoky-grey lightening
+      (#8B8E90, cool smoky grey) confined to the body panel — strongest
+      across the shoulders and upper chest around the embroidered "Said,"
+      script, dissolving gradually into the dark body by armpit level with
+      no hard edge and no warm or tan cast. The ribbed collar returns to
+      dark washed black like the collar in Image 2, and both sleeves
+      become uniform dark washed black from shoulder seam to cuff, with no
+      lightening.
+
+      This shirt has a plain blank interior — do not copy the small neck
+      label from Image 2. No neck labels, no hang tags, no new text or
+      marks.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.front", "inputs.front_base"]
+      prompt: |
+        Quality-check an edited garment mockup. Image 1 is the exact
+        embroidery artwork (ground truth for letterforms). Image 2 is the
+        tech pack placement page. Image 3 is the PREVIOUS version that was
+        edited. The LAST image is the edited result under review.
+
+        Work through this in order, citing what you see:
+        1. TRANSCRIBE the embroidered text in the LAST image character by
+           character, exactly as rendered, including any errors, duplicated
+           letters, or malformed glyphs. Do not correct it to what it
+           should say.
+        2. Does the transcription exactly match "Said," — yes/no?
+        3. Compare the rendered script to Image 1: is any letterform
+           different in shape, stroke weight, or spacing? Name the letter
+           if yes. Is the thread still pale greige-gold (not copper or
+           orange)?
+        4. Does the wordmark appear exactly once — yes/no?
+        5. Compared to Image 3, is the sun fade now SUBTLER yet still
+           CLEARLY VISIBLE, confined to the body panel: overall dark
+           washed black shirt with a soft smoky-grey lightening across the
+           shoulders and upper chest, dissolving with no hard edge,
+           neutral-cool in hue (not beige, cream, khaki, tan or sepia) —
+           yes/no? (An almost invisible fade also fails this check.)
+        6. Is the ribbed collar dark washed black rather than bleached pale
+           — yes/no? Are both sleeves uniform dark washed black with no
+           visible lightening — yes/no?
+        7. Versus Image 3: are the garment shape, folds, camera angle and
+           concrete floor preserved, with no overall warm or soft drift —
+           yes/no?
+        8. Any new text, tags, labels, red marks, watermarks, or a neck
+           label that was not in Image 3 — yes/no?
+
+        Then score 0-1 with hard caps: wrong/duplicated/extra words → below
+        0.5; collar or either sleeve still bleached, warm-hued or
+        hard-banded fade, or fade missing entirely → below 0.6; any
+        letterform or thread-color mismatch vs Image 1 → below 0.65;
+        unrequested changes elsewhere → below 0.7.
+
+        If below threshold, write feedback as ONE directional edit
+        instruction naming the specific defect and what to keep unchanged
+        (it is fed to the image model verbatim).
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}
+
+  - id: render_back
+    kind: image
+    provider: fal-gpt-image
+    model: openai/gpt-image-2/edit
+    inputs: ["inputs.back_base", "inputs.style", "inputs.back[0]"]
+    # 1536x2048 = the bases' exact size/aspect (multiples of 16 as required);
+    # pinning it keeps composition fixed and cost predictable (~3.1MP output).
+    params: { quality: high, image_size: { width: 1536, height: 2048 } }
+    output: file
+    prompt: |
+      Edit Image 1, a professional e-commerce product photograph of the
+      back of a washed-black t-shirt lying flat on a concrete floor.
+      Image 2 is the tech pack's sun-fade reference photo. Image 3 is the
+      exact vector artwork of the back embroidery.
+
+      Keep the embroidered "In Passing" script exactly as it is in
+      Image 1 — the same letterforms as Image 3 ("In" upper right,
+      "Passing" sweeping beneath), the same thin stroke weight, the same
+      pale greige-gold thread color, the same size and position. Keep the
+      garment shape, fabric folds, camera angle, overall lighting and the
+      concrete floor unchanged.
+
+      Change only the sun fade, matching the strength and character of the
+      fade in Image 2: a clearly visible but subtle smoky-grey lightening
+      (#8B8E90, cool smoky grey) confined to the body panel — strongest
+      across the shoulders and upper back around the embroidered
+      "In Passing" script, dissolving gradually into the dark body by
+      armpit level with no hard edge and no warm or tan cast. The ribbed
+      collar returns to dark washed black like the collar in Image 2, and
+      both sleeves become uniform dark washed black from shoulder seam to
+      cuff, with no lightening.
+
+      No neck labels, no hang tags, no new text or marks.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.back", "inputs.back_base"]
+      prompt: |
+        Quality-check an edited garment mockup. Image 1 is the exact
+        embroidery artwork (ground truth for letterforms). Image 2 is the
+        tech pack placement page. Image 3 is the PREVIOUS version that was
+        edited. The LAST image is the edited result under review.
+
+        Work through this in order, citing what you see:
+        1. TRANSCRIBE the embroidered text in the LAST image character by
+           character, exactly as rendered, including any errors, duplicated
+           letters, or malformed glyphs. Do not correct it to what it
+           should say.
+        2. Does the transcription exactly match "In Passing" — yes/no?
+        3. Compare the rendered script to Image 1: is any letterform
+           different in shape, stroke weight, or spacing ("In" upper right,
+           "Passing" sweeping beneath)? Name the letter if yes. Is the
+           thread still pale greige-gold (not copper or orange)?
+        4. Does each word appear exactly once — yes/no?
+        5. Compared to Image 3, is the sun fade now SUBTLER yet still
+           CLEARLY VISIBLE, confined to the body panel: overall dark
+           washed black shirt with a soft smoky-grey lightening across the
+           shoulders and upper back, dissolving with no hard edge,
+           neutral-cool in hue (not beige, cream, khaki, tan or sepia) —
+           yes/no? (An almost invisible fade also fails this check.)
+        6. Is the ribbed collar dark washed black rather than bleached pale
+           — yes/no? Are both sleeves uniform dark washed black with no
+           visible lightening — yes/no?
+        7. Versus Image 3: are the garment shape, folds, camera angle and
+           concrete floor preserved, with no overall warm or soft drift —
+           yes/no?
+        8. Any new text, tags, labels, red marks or watermarks — yes/no?
+
+        Then score 0-1 with hard caps: wrong/duplicated/extra words → below
+        0.5; collar or either sleeve still bleached, warm-hued or
+        hard-banded fade, or fade missing entirely → below 0.6; any
+        letterform or thread-color mismatch vs Image 1 → below 0.65;
+        unrequested changes elsewhere → below 0.7.
+
+        If below threshold, write feedback as ONE directional edit
+        instruction naming the specific defect and what to keep unchanged
+        (it is fed to the image model verbatim).
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}

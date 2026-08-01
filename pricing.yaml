@@ -70,6 +70,20 @@ models:
     verified: true
     notes: verified 2026-08-01; $0.045 at ≤2.61MP (1.5K or lower), $0.09 above; input images $0.003 from 2nd
 
+  # GPT Image 2 via fal.ai — #1 LMArena image-edit model (2026-07-24 snapshot).
+  # Token-billed; rates verified 2026-08-01 on BOTH fal's models API and
+  # OpenAI's pricing page (identical): image input $8/M tok, output $30/M tok,
+  # text input $5/M tok. Official image guide anchors high quality at ~$0.211
+  # per 1024x1024 image (~$0.20 per output MP). Conservative per-image figure
+  # below assumes our pinned 1536x2048 output (3.1MP ~ $0.63) plus three
+  # high-fidelity input refs; fal returns no usage data, so actual spend may
+  # run lower than recorded.
+  openai/gpt-image-2/edit:
+    unit: per_image
+    per_image: 0.80
+    verified: true
+    notes: derived 2026-08-01 from official token rates + official per-image anchors; conservative (high quality, 3.1MP output, 3 input refs)
+
   # Kling — verified 2026-08-01 against kling.ai/dev/pricing (list price,
   # 1 unit = $0.14). kling-3.0 at 720p with audio off = 0.6 units/s.
   # 1080p = $0.112/s, 4k = $0.42/s. Actual spend is read back from the

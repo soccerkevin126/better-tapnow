@@ -1,0 +1,160 @@
+# TEMPLATE for the next mockup iteration (v9+) — copy, rename to
+# mockup-v<n>.yaml, and replace the three <PLACEHOLDER> blocks. Encodes the
+# researched method in PROMPTING.md; supersedes mockup-v8's structure.
+#
+# Iteration protocol (PROMPTING.md §0-1):
+#   - copy the previous BEST outputs into input/front_base & input/back_base
+#   - chains cap at 3-4 edits from a pristine base; past that, re-base on
+#     the best early version instead of stacking another edit
+#   - drop tight crops of just each wordmark into input/front_zoom &
+#     input/back_zoom (crop from the vector render, no spec-box edges)
+#   - ONE change per version; everything else goes in the Lock list
+
+name: mockup-template
+description: Iteration template — Lock/Change/Scope edit at 4K with transcription-first gates.
+
+inputs:
+  mode: roles
+  roles:
+    front:      { type: image, min: 1 }             # exact front art + product ref
+    back:       { type: image, min: 1 }             # exact back art + product ref
+    front_base: { type: image, min: 1, max: 1 }     # previous best front — the edit target
+    back_base:  { type: image, min: 1, max: 1 }     # previous best back
+    front_zoom: { type: image, min: 0, max: 1 }     # tight crop of just the front wordmark
+    back_zoom:  { type: image, min: 0, max: 1 }     # tight crop of just the back wordmark
+    notes:      { type: text, min: 0, max: 1 }
+
+steps:
+  - id: render_front
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image   # routes to /edit (refs attached)
+    inputs: ["inputs.front_base"]
+    params: { image_size: auto_4K }    # resolution IS fidelity for thin strokes
+    output: file
+    # Lock / Change / Scope — one edit, consistent nouns, quoted wordmark.
+    prompt: |
+      Edit Image 1, a professional e-commerce product photograph of a
+      washed-black t-shirt lying on a concrete floor. Keep the embroidered
+      "Said," script unchanged — same letterforms, thin stroke weight, size
+      and position, exactly as it appears in Image 1 — and keep the ribbed
+      collar, garment shape, fabric texture, folds, lighting, shadows,
+      camera angle and the concrete floor unchanged.
+
+      <CHANGE: one concise modification, e.g. "Make the sun-faded zone on
+      the body panel a paler, cooler smoky grey (#B9BDBF, pale cool grey),
+      still dispersed and irregular, dissolving gradually into the dark
+      lower body with no hard edge.">
+
+      Edit the body panel only; no changes to the sleeves, the collar, or
+      the embroidered "Said," script. The sleeves stay uniform dark washed
+      black with a plain clean finish. No neck labels, no hang tags, no new
+      text or marks.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      # Gate sees: exact art (+ product ref), previous version, zoom crop,
+      # then the rendered result is appended last by the runner.
+      inputs: ["inputs.front", "inputs.front_base", "inputs.front_zoom"]
+      prompt: |
+        Quality-check an edited garment mockup. Image 1 is the exact
+        embroidery artwork (ground truth for letterforms). Image 2 is the
+        target product reference. Image 3 is the PREVIOUS version that was
+        edited. Image 4 is a close-up crop of the exact wordmark artwork.
+        The LAST image is the edited result under review.
+
+        Work through this in order, citing what you see:
+        1. TRANSCRIBE the embroidered text in the LAST image character by
+           character, exactly as rendered, including any errors, duplicated
+           letters, or malformed glyphs. Do not correct it to what it
+           should say.
+        2. Does the transcription exactly match "Said," — yes/no?
+        3. Compare the rendered script to Image 1 and the Image 4 close-up:
+           is any letterform different in shape, stroke weight, or spacing?
+           Name the letter if yes.
+        4. Does the wordmark appear exactly once — yes/no?
+        5. <CHANGE-CHECK: verify the requested modification happened, with
+           measurable color/placement language, e.g. "is the body-panel
+           fade a NEUTRAL COOL grey — not beige, cream, khaki, tan, sepia
+           or any warm hue?">
+        6. Are both sleeves uniform dark washed black with NO fade (tech
+           pack: fade is body panel only) — yes/no?
+        7. Versus Image 3: did anything change outside the requested edit
+           (collar, garment shape, lighting, floor, camera angle)? Also
+           compare overall color temperature — any warm/soft drift?
+        8. Any new text, tags, labels, red marks or watermarks — yes/no?
+
+        Then score 0-1 with hard caps: duplicated or extra words → below
+        0.5; fade on sleeves, warm-hued or ombre-band fade → below 0.6;
+        any letterform mismatch vs Image 1 → below 0.65; unrequested
+        changes or global drift → below 0.7.
+
+        If below threshold, write feedback as ONE directional edit
+        instruction naming the specific defect and what to keep unchanged
+        (it is fed to the image model verbatim).
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}
+
+  - id: render_back
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image
+    inputs: ["inputs.back_base"]
+    params: { image_size: auto_4K }
+    output: file
+    prompt: |
+      Edit Image 1, a professional e-commerce product photograph of the
+      back of a washed-black t-shirt lying on a concrete floor. Keep the
+      embroidered "In Passing" script unchanged — same letterforms ("In"
+      upper right, "Passing" sweeping beneath), thin stroke weight, size
+      and position, exactly as it appears in Image 1 — and keep the ribbed
+      collar, garment shape, fabric texture, folds, lighting, shadows,
+      camera angle and the concrete floor unchanged.
+
+      <CHANGE: one concise modification for the back.>
+
+      Edit the body panel only; no changes to the sleeves, the collar, or
+      the embroidered "In Passing" script. The sleeves stay uniform dark
+      washed black with a plain clean finish. No neck labels, no hang tags,
+      no new text or marks.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.back", "inputs.back_base", "inputs.back_zoom"]
+      prompt: |
+        Quality-check an edited garment mockup. Image 1 is the exact
+        embroidery artwork (ground truth for letterforms). Image 2 is the
+        target product reference. Image 3 is the PREVIOUS version that was
+        edited. Image 4 is a close-up crop of the exact wordmark artwork.
+        The LAST image is the edited result under review.
+
+        Work through this in order, citing what you see:
+        1. TRANSCRIBE the embroidered text in the LAST image character by
+           character, exactly as rendered, including any errors, duplicated
+           letters, or malformed glyphs. Do not correct it to what it
+           should say.
+        2. Does the transcription exactly match "In Passing" — yes/no?
+        3. Compare the rendered script to Image 1 and the Image 4 close-up:
+           is any letterform different in shape, stroke weight, or spacing?
+           Name the letter if yes.
+        4. Does each word appear exactly once — yes/no?
+        5. <CHANGE-CHECK for the back edit.>
+        6. Are both sleeves uniform dark washed black with NO fade (tech
+           pack: fade is body panel only) — yes/no?
+        7. Versus Image 3: did anything change outside the requested edit
+           (collar, garment shape, lighting, floor, camera angle)? Also
+           compare overall color temperature — any warm/soft drift?
+        8. Any new text, tags, labels, red marks or watermarks — yes/no?
+
+        Then score 0-1 with hard caps: duplicated or extra words → below
+        0.5; fade on sleeves, warm-hued or ombre-band fade → below 0.6;
+        any letterform mismatch vs Image 1 → below 0.65; unrequested
+        changes or global drift → below 0.7.
+
+        If below threshold, write feedback as ONE directional edit
+        instruction naming the specific defect and what to keep unchanged
+        (it is fed to the image model verbatim).
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}

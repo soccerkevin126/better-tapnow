@@ -6,7 +6,7 @@ from .mock import MockProvider
 
 # Real adapters land here one at a time. Until an adapter exists, resolving
 # it without --mock fails loudly instead of inventing endpoints.
-KNOWN_PROVIDERS = ("anthropic", "fal-seedream", "ark-seedream", "kling", "ffmpeg", "mock")
+KNOWN_PROVIDERS = ("anthropic", "fal-gpt-image", "fal-seedream", "ark-seedream", "kling", "ffmpeg", "mock")
 
 
 def get_provider(name: str, *, mock: bool = False, pricing=None) -> Provider:
@@ -24,6 +24,9 @@ def get_provider(name: str, *, mock: bool = False, pricing=None) -> Provider:
     if name == "fal-seedream":
         from .fal_seedream import FalSeedreamProvider
         return FalSeedreamProvider(pricing=pricing)
+    if name == "fal-gpt-image":
+        from .fal_gpt_image import FalGptImageProvider
+        return FalGptImageProvider(pricing=pricing)
     if name == "kling":
         from .kling import KlingProvider
         return KlingProvider(pricing=pricing)

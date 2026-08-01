@@ -1,0 +1,176 @@
+# v9 = ITERATION on v5 (still the best base; v6→v7 drifted warm, v8 never
+# ran). First version built per PROMPTING.md and gated per the researched
+# method. The change: v5's fade is heavily overdone vs the tech pack's own
+# reference photo (page 8 "Extras", now correctly extracted to input/style/ —
+# the old style file was a mis-cropped measurement page). Target: subtle
+# smoky body-panel-only fade, dark collar, uniform dark sleeves.
+#
+# Ref hygiene per playbook: art refs re-rendered from the .ai at 600dpi and
+# scrubbed of spec-box borders/leader lines. No separate zoom refs — these
+# lockups already are tight wordmark crops; duplicates would waste ref slots.
+
+name: mockup-v9
+description: Iterate on v5 — align the sun fade with the tech pack reference photo (subtle, body panel only, dark collar and sleeves).
+
+inputs:
+  mode: roles
+  roles:
+    front:      { type: image, min: 1 }             # exact art + placement ref (gate)
+    back:       { type: image, min: 1 }
+    front_base: { type: image, min: 1, max: 1 }     # v5 front — the edit target
+    back_base:  { type: image, min: 1, max: 1 }     # v5 back
+    style:      { type: image, min: 1, max: 1 }     # tech pack sun-fade reference photo
+    notes:      { type: text, min: 0, max: 1 }
+
+steps:
+  - id: render_front
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image   # refs attached → /edit
+    inputs: ["inputs.front_base", "inputs.style"]
+    params: { image_size: auto_4K }
+    output: file
+    prompt: |
+      Edit Image 1, a professional e-commerce product photograph of a
+      washed-black t-shirt lying flat on a concrete floor. Image 2 is the
+      tech pack's sun-fade reference photo: a washed-black tee whose sun
+      fade is a subtle, smoky, organic lightening.
+
+      Keep the embroidered "Said," script exactly unchanged — same
+      letterforms, thin stroke weight, size and position. Keep the garment
+      shape, fabric folds, camera angle, overall lighting and the concrete
+      floor unchanged.
+
+      Change only the sun fade, to match the character of Image 2: the
+      shirt reads overall dark washed black, with a soft, dispersed,
+      smoky-grey lightening (#8B8E90, cool smoky grey) confined to the body
+      panel — strongest across the shoulders and upper chest, dissolving
+      gradually into the dark body by armpit level with no hard edge and no
+      warm or tan cast. The ribbed collar returns to dark washed black like
+      the collar in Image 2, and both sleeves become uniform dark washed
+      black from shoulder seam to cuff, with no lightening.
+
+      This shirt has a plain blank interior — do not copy the small neck
+      label from Image 2. No neck labels, no hang tags, no new text or
+      marks.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.front", "inputs.front_base"]
+      prompt: |
+        Quality-check an edited garment mockup. Image 1 is the exact
+        embroidery artwork (ground truth for letterforms). Image 2 is the
+        tech pack placement page. Image 3 is the PREVIOUS version that was
+        edited. The LAST image is the edited result under review.
+
+        Work through this in order, citing what you see:
+        1. TRANSCRIBE the embroidered text in the LAST image character by
+           character, exactly as rendered, including any errors, duplicated
+           letters, or malformed glyphs. Do not correct it to what it
+           should say.
+        2. Does the transcription exactly match "Said," — yes/no?
+        3. Compare the rendered script to Image 1: is any letterform
+           different in shape, stroke weight, or spacing? Name the letter
+           if yes.
+        4. Does the wordmark appear exactly once — yes/no?
+        5. Compared to Image 3, is the sun fade now SUBTLER and confined to
+           the body panel: the shirt reads overall dark washed black with a
+           soft smoky-grey lightening across the shoulders and upper chest
+           only, dissolving with no hard edge, neutral-cool in hue (not
+           beige, cream, khaki, tan or sepia) — yes/no?
+        6. Is the ribbed collar dark washed black rather than bleached pale
+           — yes/no? Are both sleeves uniform dark washed black with no
+           visible lightening — yes/no?
+        7. Versus Image 3: is the embroidered script identical (including
+           thread color), and are the garment shape, folds, camera angle
+           and concrete floor preserved, with no overall warm or soft
+           drift — yes/no?
+        8. Any new text, tags, labels, red marks, watermarks, or a neck
+           label that was not in Image 3 — yes/no?
+
+        Then score 0-1 with hard caps: wrong/duplicated/extra words → below
+        0.5; collar or either sleeve still bleached, or a warm-hued or
+        hard-banded fade → below 0.6; any letterform mismatch vs Image 1 →
+        below 0.65; unrequested changes elsewhere → below 0.7.
+
+        If below threshold, write feedback as ONE directional edit
+        instruction naming the specific defect and what to keep unchanged
+        (it is fed to the image model verbatim).
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}
+
+  - id: render_back
+    kind: image
+    provider: fal-seedream
+    model: fal-ai/bytedance/seedream/v4/text-to-image
+    inputs: ["inputs.back_base", "inputs.style"]
+    params: { image_size: auto_4K }
+    output: file
+    prompt: |
+      Edit Image 1, a professional e-commerce product photograph of the
+      back of a washed-black t-shirt lying flat on a concrete floor.
+      Image 2 is the tech pack's sun-fade reference photo: a washed-black
+      tee whose sun fade is a subtle, smoky, organic lightening.
+
+      Keep the embroidered "In Passing" script exactly unchanged — same
+      letterforms ("In" upper right, "Passing" sweeping beneath), thin
+      stroke weight, size and position. Keep the garment shape, fabric
+      folds, camera angle, overall lighting and the concrete floor
+      unchanged.
+
+      Change only the sun fade, to match the character of Image 2: the
+      shirt reads overall dark washed black, with a soft, dispersed,
+      smoky-grey lightening (#8B8E90, cool smoky grey) confined to the body
+      panel — strongest across the shoulders and upper back, dissolving
+      gradually into the dark body by armpit level with no hard edge and no
+      warm or tan cast. The ribbed collar returns to dark washed black like
+      the collar in Image 2, and both sleeves become uniform dark washed
+      black from shoulder seam to cuff, with no lightening.
+
+      No neck labels, no hang tags, no new text or marks.
+    quality_gate:
+      provider: anthropic
+      model: claude-fable-5
+      threshold: 0.7
+      max_retries: 2
+      inputs: ["inputs.back", "inputs.back_base"]
+      prompt: |
+        Quality-check an edited garment mockup. Image 1 is the exact
+        embroidery artwork (ground truth for letterforms). Image 2 is the
+        tech pack placement page. Image 3 is the PREVIOUS version that was
+        edited. The LAST image is the edited result under review.
+
+        Work through this in order, citing what you see:
+        1. TRANSCRIBE the embroidered text in the LAST image character by
+           character, exactly as rendered, including any errors, duplicated
+           letters, or malformed glyphs. Do not correct it to what it
+           should say.
+        2. Does the transcription exactly match "In Passing" — yes/no?
+        3. Compare the rendered script to Image 1: is any letterform
+           different in shape, stroke weight, or spacing ("In" upper right,
+           "Passing" sweeping beneath)? Name the letter if yes.
+        4. Does each word appear exactly once — yes/no?
+        5. Compared to Image 3, is the sun fade now SUBTLER and confined to
+           the body panel: the shirt reads overall dark washed black with a
+           soft smoky-grey lightening across the shoulders and upper back
+           only, dissolving with no hard edge, neutral-cool in hue (not
+           beige, cream, khaki, tan or sepia) — yes/no?
+        6. Is the ribbed collar dark washed black rather than bleached pale
+           — yes/no? Are both sleeves uniform dark washed black with no
+           visible lightening — yes/no?
+        7. Versus Image 3: is the embroidered script identical (including
+           thread color), and are the garment shape, folds, camera angle
+           and concrete floor preserved, with no overall warm or soft
+           drift — yes/no?
+        8. Any new text, tags, labels, red marks or watermarks — yes/no?
+
+        Then score 0-1 with hard caps: wrong/duplicated/extra words → below
+        0.5; collar or either sleeve still bleached, or a warm-hued or
+        hard-banded fade → below 0.6; any letterform mismatch vs Image 1 →
+        below 0.65; unrequested changes elsewhere → below 0.7.
+
+        If below threshold, write feedback as ONE directional edit
+        instruction naming the specific defect and what to keep unchanged
+        (it is fed to the image model verbatim).
+        Reply with ONLY JSON: {"score": <0-1>, "feedback": "<text>"}
